@@ -7,6 +7,9 @@
 #include <limits.h>
 #include <algorithm>
 
+int test = 0;
+
+
 using namespace std;
 enum port_state {
     FREE = 0,
