@@ -10,6 +10,7 @@
 int test = 0;
 int testF = 1;
 int dev = 2;
+int bug = 1;
 
 using namespace std;
 enum port_state {
