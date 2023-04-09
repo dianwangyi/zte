@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <queue>
+#include <limits.h>
 #include <algorithm>
 
 using namespace std;
@@ -11,10 +13,13 @@ enum port_state {
     BUSY
 };
 
+static int timer;
+static int portN;
 
 class Port{
 public:
-    Port(int id, int size) : state(FREE), portID(id), maxSize(size), resSize(size), lastTime(0){};
+    Port(int id, int size) : state(FREE), portID(id), maxSize(size), 
+                    resSize(size), lastTime(0), curQueSize(0),waitQueSize(0){};
 
     port_state state;
     int portID;
@@ -22,41 +27,46 @@ public:
 
     int resSize;
     int lastTime;   // 上一次更新的时间
+    int curQueSize;
+    int waitQueSize;
     vector<int> resTime; 
     vector<vector<int>> curList = {};
+    queue <vector<int>> waitQue = {}; 
 };
 
 bool cmp(vector<int> &a, vector<int> &b);
 bool cmpPort(vector<int> &a, vector<int> &b);
 vector<vector<int>> readfile(string &addr, int seek);
 
-void updataTable(int cur_t, Port *portTable[], int portN);
+void updataTable(Port *portTable[]);
 
-// int findMInPort(vector<int> &flow, Port *portTable[], int &startTime, int portN){
-//     int n = portN;
-//     int flowSize = flow[1];
-//     for(int i = 0; i < n; i++){
-//         if(portTable[i]->resSize >= flowSize){
-//             portTable[i]->resSize -= flowSize;
-//             portTable[i]->curList.push_back(flow);
-//             portTable[i]->resTime.push_back(flow[3]);
-            
-//             return i;
-//         }
-//     }
-//     for(int i = 0; i < n; i++){
-        
-//         }
-// }
-int findMInPort(vector<int> &flow, Port *portTable[], int &startTime, int portN){
+int findMInPort(vector<int> &flow, Port *portTable[]){
     int n = portN;
     int flowSize = flow[1];
     for(int i = 0; i < n; i++){
-        if(portTable[i]->maxSize >= flowSize){
-            return i;
+        if(portTable[i]->resSize >= flowSize){
+
+            portTable[i]->resSize -= flowSize;
+            portTable[i]->curList.push_back(flow);
+            portTable[i]->resTime.push_back(flow[3]);
+            return portTable[i]->portID;
         }
     }
-    return n-1;
+
+    int minQueSize = INT_MAX;
+    int minQueIdx = 0;
+    for(int j = 1; j < n; j++){
+        if(portTable[j]->maxSize >= flow[1]){
+            if(portTable[j]->waitQueSize < minQueSize){
+                minQueSize = min(minQueSize, portTable[j]->waitQueSize);
+                minQueIdx = j;
+            }
+        }
+    }
+
+    portTable[minQueIdx]->waitQue.push(flow);
+    portTable[minQueIdx]->waitQueSize++;
+    return portTable[minQueIdx]->portID;
 }
 
 
@@ -82,8 +92,8 @@ int main(){
     if(flowtest.empty())
         break;
 
-    int portNum = ports.size();
-    Port* portTable[portNum];
+    portN = ports.size();
+    Port* portTable[portN];
 
     sort(ports.begin(), ports.end(), cmpPort);
 
@@ -93,33 +103,32 @@ int main(){
     }
 
 
-    // for(int i = 0; i < ports.size(); i++){
-    //     // cout << portTable[i]-> << " ";
-    //     cout << portTable[i]->maxSize;
-    //     cout << endl;
-    // }
-
     sort(flowtest.begin(), flowtest.end(), cmp);
-    // for(auto record : flowtest){
-    //     for(auto x : record){
-    //         // cout << x << " ";
-    //         outtest << x << " ";
-    //     }
-    //     // cout << endl;
-    //     outtest << endl;
-    // }
-    int cur_t = 0;
-    for(auto flow : flowtest){
-        int cur_t = flow[2];
+
+    int maxtime = (*(flowtest.end()-1))[2];
+    int flowIdx = 0;
+
+    while(timer <= maxtime){
+        updataTable(portTable);
+
+        if(timer == flowtest[flowIdx][2]){
+            // 当前时刻有流到达
+            // vector<vector<int>> curTimeFlow;
+            while(flowIdx < flowtest.size() &&  timer == flowtest[flowIdx][2]){
+                // curTimeFlow.push_back(flowtest[flowIdx]);
+
+                int port_flow = findMInPort(flowtest[flowIdx], portTable);
+
+                outtest << flowtest[flowIdx][0] <<',' << port_flow << ',' << flowtest[flowIdx][2] << endl;
+
+                flowIdx++;
+            }
+        }
         
-        // updataTable(cur_t, portTable, portNum);     // 更新时间，到达当前时间curt后，端口的变化  经过了t时间，每一个端口中，剩余时间不足t的流结束，当前容量增加；大于t的减少t
-
-        int startTime = -1;
-        int port_flow = findMInPort(flow, portTable, startTime, portNum); //对于当前流，找到一个端口放入。某一端口剩余容量大于流大小，放入，端口更新size，list；没有能放的，找最接近的排队
-        outtest << flow[0] <<',' << port_flow << ',' << flow[2] << endl;
-        // cout << flow[0] <<',' << port_flow << ',' << flow[2] << endl;
-
+        timer++;
     }
+    timer = 0;
+
     }
     return 0;
 
@@ -167,22 +176,33 @@ bool cmpPort(vector<int> &a, vector<int> &b){
     return false;
 }
 
-void updataTable(int cur_t, Port *portTable[], int portN){
+void updataTable(Port *portTable[]){
     int n = portN;
     for(int i = 0; i < n; i++){
-        int listSize = portTable[i]->curList.size();
-        for(int j = 0; j < listSize; j++){
-            if(cur_t - portTable[i]->lastTime >= portTable[i]->resTime[j]){
+        Port* curPortPtr = portTable[i];
+        if(curPortPtr->lastTime == timer)
+            continue;
+        int numCur =  curPortPtr->curQueSize;
 
-                portTable[i]->resSize += portTable[i]->curList[j][1];
-                portTable[i]->curList.erase(j + portTable[i]->curList.begin());
-                portTable[i]->resTime.erase(j + portTable[i]->resTime.begin());
+        for(int i = 0; i < numCur; i++){
+            if(timer - curPortPtr->lastTime < curPortPtr->resTime[i]){
+                // 当前流未完全发送，更新剩余时间
+                curPortPtr->resTime[i] = timer - curPortPtr->lastTime;
             }
             else{
-                portTable[i]->resTime[j] -= (cur_t - portTable[i]->lastTime);
+                // 当前流发送完毕，从当前队列中删除
+                // 检查等待队列的队头是否可发送， 可发送则更新加入当前发送队列并记录剩余时间
+                curPortPtr->resSize += curPortPtr->curList[i][1];
+                curPortPtr->resTime.erase(i + curPortPtr->resTime.begin());
+                curPortPtr->curList.erase(i + curPortPtr->curList.begin());
+                if(curPortPtr->resSize >= curPortPtr->waitQue.front()[1]){
+                    curPortPtr->curList.push_back(curPortPtr->waitQue.front());
+                    curPortPtr->resTime.push_back(curPortPtr->waitQue.front()[3]);
+                    curPortPtr->waitQueSize--;
+                }
             }
         }
-
-        portTable[i]->lastTime = cur_t;
+        // 更新时间
+        curPortPtr->lastTime = timer;
     }
 }
