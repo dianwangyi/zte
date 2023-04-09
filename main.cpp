@@ -8,7 +8,7 @@
 #include <algorithm>
 
 int test = 0;
-
+int testmaster = 1;
 
 using namespace std;
 enum port_state {
