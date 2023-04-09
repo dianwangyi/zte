@@ -67,12 +67,12 @@ int main(){
     vector<vector<int>> flowtest;
     vector<vector<int>> ports;
 
-    string flowfile = "../data/" + to_string(it) + "/flow.txt";
-    string portfile = "../data/" + to_string(it) + "/port.txt";
-    ofstream outtest("../data/" + to_string(it) + "/result.txt", ios::trunc);
-    // string flowfile = "E:/work/ZTEsuanfa/data/" + to_string(it) + "/flow.txt";
-    // string portfile = "E:/work/ZTEsuanfa/data/" + to_string(it) + "/port.txt";
-    // ofstream outtest("E:/work/ZTEsuanfa/data/" + to_string(it) + "/result.txt", ios::trunc);
+    // string flowfile = "../data/" + to_string(it) + "/flow.txt";
+    // string portfile = "../data/" + to_string(it) + "/port.txt";
+    // ofstream outtest("../data/" + to_string(it) + "/result.txt", ios::trunc);
+    string flowfile = "E:/work/ZTEsuanfa/data/" + to_string(it) + "/flow.txt";
+    string portfile = "E:/work/ZTEsuanfa/data/" + to_string(it) + "/port.txt";
+    ofstream outtest("E:/work/ZTEsuanfa/data/" + to_string(it) + "/result.txt", ios::trunc);
     it++;
     // string portfile = "E:/work/ZTEsuanfa/data/port.txt";
     // ofstream outtest("E:/work/ZTEsuanfa/data/result.txt", ios::trunc);
