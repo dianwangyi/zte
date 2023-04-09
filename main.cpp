@@ -8,11 +8,7 @@
 #include <algorithm>
 
 int test = 0;
-<<<<<<< HEAD
-int testmaster = 1;
-=======
 int testF = 1;
->>>>>>> feature1
 
 using namespace std;
 enum port_state {
